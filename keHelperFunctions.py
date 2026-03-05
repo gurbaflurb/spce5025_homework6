@@ -251,7 +251,6 @@ def determine_seconds_since_j2000_epoch(jd) -> float:
      '''Takes in a Julian Date and converts it to seconds since the J2000 epoch'''
      return (jd - get_j2000_jd_epoch()) * 86400
 
-
 def determine_tai_s(seconds):
      '''Takes in a time in seconds since the j2000 epoch and converts to the TAI seconds'''
      return seconds + get_tai_utc()
@@ -341,3 +340,25 @@ def determine_moon_vector_lf(jd):
      z = r*n*er
 
      return [x, y, z]
+
+def sun_acceleration():
+     '''Uses RK4 to estimate the acceleration force from the sun on the space vehicle'''
+     pass
+
+def moon_acceleration():
+     '''Uses RK4 to estimate the acceleration force from the moon on the space vehicle'''
+     pass
+
+def drag_acceleration():
+     '''Uses RK4 to estimate the acceleration force from atmospheric drag on the space vehicle'''
+     pass
+
+def solar_radiation():
+     '''Uses RK4 to estimate the acceleration force from solar radiation on the space vehicle'''
+     # Slide 22
+     pass
+
+def compute_total_acceleration_sv():
+     '''Adds up all the estimations for different forces together and applies them to the space vehicle'''
+     # Slide 28
+     pass

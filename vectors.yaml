@@ -1,0 +1,12 @@
+vectors:
+  vector1:
+    x_pos: 5907119 # Meters
+    y_pos: -1465029 # Meters
+    z_pos: 2944866 # Meters
+    x_velocity: 935.1631 # Meters/Second
+    y_velocity: 7414.308 # Meters/Second
+    z_velocity: 1901.963 # Meters/Second
+    latc: 25.82091 # Degrees
+    latd: 25.87529 # Degrees
+    lon: 346.0693 # Degrees
+    altd: 387.0463 # km
