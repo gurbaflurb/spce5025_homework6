@@ -31,6 +31,7 @@ def main():
     radiation_coefficient = 1.41
     solar_pressure_area = 20 # m^2
     vehicle_mass = 1000 # km
+    solar_pressure = 4.57 * math.pow(10, -6) # Given on slide 22
     omega_earth = 72.921151467 * math.pow(10, -6) # rad/sec
     nautical_mile = 1.852 # km
     sun_mu = ke1.mu * 332946.09358859973
@@ -65,12 +66,25 @@ def main():
 
     # Compute drag acceleration with for F10=100
     # Remember: model uses F10scaled = F10/100
-    
+
 
     # Compute Solar Radiation Pressure
+    solar_radiation_acceleration = keHelperFunctions.solar_radiation(solar_pressure_area,
+                                                                     radiation_coefficient, 
+                                                                     vehicle_mass, 
+                                                                     1, # Assumed that there isn't an ecclipse
+                                                                     solar_pressure,
+                                                                     sun_vector)
 
+    print(f'Solar Radiation Acceleration: {solar_radiation_acceleration}')
 
     # Compute total acceleration on SV
+    accelerants = []
+    accelerants.append(sun_acceleration)
+    accelerants.append(moon_acceleration)
+
+    total_accelerations = keHelperFunctions.compute_total_acceleration_sv(accelerants)
+    print(f'Total Acceleration on SV: {total_accelerations}')
 
 
 

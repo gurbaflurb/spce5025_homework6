@@ -325,12 +325,21 @@ def drag_acceleration():
      '''Uses RK4 to estimate the acceleration force from atmospheric drag on the space vehicle'''
      pass
 
-def solar_radiation():
-     '''Uses RK4 to estimate the acceleration force from solar radiation on the space vehicle'''
-     # Slide 22
-     pass
+def solar_radiation(exposed_area_to_sun, radiation_pressure_coefficient, sv_mass, sun_shadow_factor, solar_intensity, vector_from_sv_to_sun):
+     '''Implements a "Ball" method to predict the solar radiation pressure on the satellite.'''
+     # Slide 24
+     cram = (radiation_pressure_coefficient * exposed_area_to_sun) / sv_mass
 
-def compute_total_acceleration_sv():
-     '''Adds up all the estimations for different forces together and applies them to the space vehicle'''
-     # Slide 28
-     pass
+     pt2 = sun_shadow_factor * solar_intensity * np.divide(np.dot(-1, vector_from_sv_to_sun), np.linalg.norm(vector_from_sv_to_sun))
+
+     return cram * pt2
+
+
+def compute_total_acceleration_sv(accelerations: list):
+     '''Adds up all the estimations for different forces together and applies them to the space vehicle. Takes in a list of lists'''
+     total_accelerations = [0, 0, 0]
+     for a in accelerations:
+          total_accelerations += a
+     
+     return total_accelerations
+
