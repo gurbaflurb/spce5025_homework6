@@ -40,9 +40,6 @@ def keplarian_rk4(r_vector, r_dot_vector, step, mu):
      '''Takes in the position vector (r_vector), velocity vector (r_dot_vector), r (norm of r_vector), step (Size of step between each round), and mu (Probably from WGS 84).
      Mu is typically provided as meters cubed over seconds squared.'''
 
-     # Commented out sections can help to bug things 
-
-     # Given on slide 22
      r0norm = np.linalg.norm(r_vector)
      rd_a_pt = (-mu/math.pow(r0norm, 3))*r_vector
 
@@ -50,14 +47,6 @@ def keplarian_rk4(r_vector, r_dot_vector, step, mu):
      rd_a = r_dot_vector + (step/2)*rd_a_pt
      k1 = [r_dot_vector, rd_a_pt]
 
-#      print(f'k1  : {k1[0]}')
-#      print(f'k1 a: {k1[1]}')
-#      print(f'ra: {r_a}')
-#      print(f'va: {rd_a}')
-#      print(f'Norm of r: {r0norm}')
-#      print()
-
-     # Given on slide 23
      ranorm = np.linalg.norm(r_a)
      rd_b_pt = (-mu/math.pow(ranorm, 3))*r_a
 
@@ -65,34 +54,14 @@ def keplarian_rk4(r_vector, r_dot_vector, step, mu):
      rd_b = r_dot_vector+(step/2)*rd_b_pt
      k2 = [rd_a, rd_b_pt]
 
-#      print(f'k2  : {k2[0]}')
-#      print(f'k2 a: {k2[1]}')
-#      print(f'ra: {r_b}')
-#      print(f'va: {rd_b}')
-#      print(f'Norm of r: {ranorm}')
-#      print()
-
-     # Given on slide 24
      rbnorm = np.linalg.norm(r_b)
      rd_c_pt = (-mu/math.pow(rbnorm, 3))*r_b
 
-     r_c = r_vector+(step)*rd_b # These are wrong on slide 24, we multiply by the step instead of step / 2
-     rd_c = r_dot_vector+(step)*rd_c_pt # These are wrong on slide 24, we multiply by the step instead of step / 2
+     r_c = r_vector+(step)*rd_b
+     rd_c = r_dot_vector+(step)*rd_c_pt
      k3 = [rd_b, rd_c_pt]
 
-#      print(f'k3  : {k3[0]}')
-#      print(f'k3 a: {k3[1]}')
-#      print(f'rc: {r_c}')
-#      print(f'vc: {rd_c}')
-#      print(f'Norm of r: {rbnorm}')
-#      print()
-
-
-     # Given on slide 25
      k4 = [rd_c, (-mu/math.pow(np.linalg.norm(r_c), 3))*r_c]
-#      print(f'k4  : {k4[0]}')
-#      print(f'k4 a: {k4[1]}')
-#      print()
 
      step_position_solution = r_vector + step*( ((k1[0])/6) + ((k2[0])/3) + ((k3[0])/3) + ((k4[0])/6) )
 
@@ -112,7 +81,6 @@ def keplarian_rk4_oblate_earth(r_vector, r_dot_vector, step):
      mu = 398600441800000 # This value is in meters cubed per second squared
 
      # K1
-     # Given on slide 52
      r = math.sqrt(math.pow(r_vector[0], 2) + math.pow(r_vector[1], 2) + math.pow(r_vector[2], 2))
 
      a_pt_s = r_vector[2]/r
@@ -147,12 +115,11 @@ def keplarian_rk4_oblate_earth(r_vector, r_dot_vector, step):
      
      a = c_pt_1 * c_pt_2
 
-     r_c = r_vector+(step)*rd_b # These are wrong on slide 24, we multiply by the step instead of step / 2
-     rd_c = r_dot_vector+(step)*a # These are wrong on slide 24, we multiply by the step instead of step / 2
+     r_c = r_vector+(step)*rd_b
+     rd_c = r_dot_vector+(step)*a
      k3 = [rd_b, a]
 
      # K4
-     # Given on slide 25
      r = math.sqrt(math.pow(r_c[0], 2) + math.pow(r_c[1], 2) + math.pow(r_c[2], 2))
 
      d_pt_s = r_c[2]/r
@@ -341,13 +308,18 @@ def determine_moon_vector_lf(jd):
 
      return [x, y, z]
 
-def sun_acceleration():
-     '''Uses RK4 to estimate the acceleration force from the sun on the space vehicle'''
-     pass
+def third_body_acceleration(third_body_mu, sv_eci_position: list, third_body_eci_position: list):
+     '''Determines the acceleration force from a third body on a given SV. Units must be given in an ECI reference frame'''
+     # Relative position vector is given by the equation: relative_position = third_body_ECI_position - SV_ECI_position
+     # Acceleration of the third body is then calculated with the following:
+     # a_third_body = mu_third_body * ((relative_position/norm(relative_position)^3) - (third_body_ECI_position/norm(third_body_ECI_position)^3))
+     relative_pos = third_body_eci_position - sv_eci_position
 
-def moon_acceleration():
-     '''Uses RK4 to estimate the acceleration force from the moon on the space vehicle'''
-     pass
+     pt1 = np.divide(relative_pos, math.pow(np.linalg.norm(relative_pos), 3))
+
+     pt2 = np.divide(third_body_eci_position, math.pow(np.linalg.norm(third_body_eci_position), 3))
+
+     return third_body_mu * (pt1 - pt2)
 
 def drag_acceleration():
      '''Uses RK4 to estimate the acceleration force from atmospheric drag on the space vehicle'''
