@@ -322,10 +322,6 @@ def compute_third_body_acceleration(third_body_mu, sv_eci_position: list, third_
 
      return third_body_mu * (pt1 - pt2)
 
-def compute_velocity_relative_to_atmosphere(position_vector, velocity_vector, omega_cross):
-     '''Takes in the position and velocity vector for the space vehicle in ECI reference frame, and the omega cross in radians/second'''
-     return velocity_vector - (np.multiply(omega_cross, position_vector))
-
 def compute_f10_scaled(days):
      '''Computes the value of F10_scaled, takes in days since the epoch: 00:00:00 31 Dec 1957. If you need F10, multiply the returned value by 100'''
      return 1.5 + 0.8 * math.cos((2 * math.pi * days)/4020)
@@ -363,47 +359,30 @@ def compute_lat_lon_alt(position_vector) -> tuple:
 
 
 def compute_atmospheric_density(date: datetime.datetime, altitude, position_vector, sun_vector):
-     '''Implements Jacchia 1960 (AKA J60) density model. Returns atmospheric pressure p. Takes in altitude in km, position_vector, and the sun_vector'''
+     '''Implements Jacchia 1960 (AKA J60) density model. Returns atmospheric pressure p. Takes in altitude in km, position_vector, and the sun_vector
+     For this homework we are given that F10 = 100 so F10 Scaled would be 1.'''
      
-     # From solution
-     f2m = 0.3048 # Feet to meters
-     nm2f = 6076.115485 # Nautical miles to feet
-     nm2m = 1852 # Nautical miles to meters
-     sf3_kgm3 = 515.37886
-     Re = 6378137 # Earth radius in meters
-     f = 1./298.257223563 # 
-     Ee = math.sqrt(2.*f - f*f)
-     e2 = Ee*Ee
      bulge_lag_angle = 0.55 # radians. Lag of bulge from sun
      cos_b = math.cos(bulge_lag_angle)
      sin_b = math.sin(bulge_lag_angle)
 
-
-
      naut_alt = altitude / 1.852 # Convert km to nautical miles
-     print(f'Nautical Miles Altitude: {naut_alt}')
 
      # Find days since epoch: 00:00:00 31 Dec 1957
      epoch = datetime.datetime(1957, 12, 31, 0, 0, 0)
      T = date - epoch
 
      f10_scaled = compute_f10_scaled(T.days)
-     print(f'F10 Scaled: {f10_scaled}')
-     f10 = 100
+     f10 = 100 # Given in initial problem on homework
 
      f10_actual_scaled = f10/100
 
      sun_vector_unit = sun_vector/np.linalg.norm(sun_vector)
 
-     print(f'Sun Unit Vector: {sun_vector_unit}')
-
-
      # Slide 34
      diurnal_bulge_unit_vector = [ (sun_vector_unit[0]*cos_b - sun_vector_unit[1]*sin_b), (sun_vector_unit[1]*cos_b + sun_vector_unit[0]*sin_b), sun_vector_unit[2] ]
      
      cos_psi = np.dot(position_vector, diurnal_bulge_unit_vector)/(np.linalg.norm(position_vector)*np.linalg.norm(diurnal_bulge_unit_vector))
-
-     print(f'COS(Psi): {cos_psi}')
 
      if naut_alt < 108:
           raise NotImplementedError('Nautical mile altitude below 180, which is not implemented')
@@ -414,11 +393,7 @@ def compute_atmospheric_density(date: datetime.datetime, altitude, position_vect
           b = 15.738
           k = 515.37886
 
-          # p_o = np.exp((6.363 * math.pow(math.e, -0.0048 * naut_alt) - a * naut_alt - b) * math.log(10, math.e))
-
           p_o = np.exp((6.363*np.exp(-0.0048 * naut_alt) - a*naut_alt - b) * math.log(10, math.e))
-
-          #p = p_o * (0.85 * f10_scaled) * (1 + 0.02375 * (math.pow(math.e, 0.0102*naut_alt))*(1 + math.pow(math.cos(cos_psi), 3))) * k
 
           p = p_o * (0.85 * f10_actual_scaled) * (1 + 0.02375 * (np.exp(0.0102*naut_alt) - 1.9)*(math.pow(1 + cos_psi, 3))) * k
 
@@ -429,20 +404,19 @@ def compute_atmospheric_density(date: datetime.datetime, altitude, position_vect
      else:
           # Default case since above 1000 nautical miles, the drag is effectively 0 kg/m^3
           p = 0
-
-     print(f'Atmospheric density: {p}')
      
      return p
 
 def compute_atmospheric_drag(drag_coefficient, drag_area, sv_mass, atmospheric_density, position_vector, velocity_vector, omega_cross_vector):
+     '''Computes the atmospheric drag on a satellite. Takes in a drag_coefficient, drag_area in meters squared, the mass of your space vehicle, atmospheric_density (Found from Jacchia), a position_vector, velocity_vector, and a vector for the rotation of the earth omega_cross_vector.
+     The reference frame for the position and velocity vector should be ECI.'''
 
+     # Slide 28
      v_r_arrow = velocity_vector - np.cross(omega_cross_vector, position_vector)
      
      velocity_unit_vector = v_r_arrow/np.linalg.norm(v_r_arrow)
 
      velocity_norm = np.linalg.norm(v_r_arrow)
-
-     print(f'v_r_arrow : {v_r_arrow}')
 
      pt1 = -((drag_coefficient * drag_area)/(2*sv_mass))
 

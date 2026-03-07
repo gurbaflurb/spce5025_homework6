@@ -66,11 +66,7 @@ def main():
 
     # Compute drag acceleration with for F10=100
     # Remember: model uses F10scaled = F10/100
-    velocity_relative_to_atmosphere = keHelperFunctions.compute_velocity_relative_to_atmosphere(ke1.r_vector, ke1.r_dot_vector, omega_earth)
     lat, lon, alt = keHelperFunctions.compute_lat_lon_alt(ke1.r_vector)
-    print(f'LAT: {lat}')
-    print(f'LON: {lon}')
-    print(f'ALT: {alt*.001}')
 
     alt_km = alt*.001 # Convert altitude from meters to km
 
