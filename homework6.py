@@ -33,7 +33,7 @@ def main():
     vehicle_mass = 1000 # km
     solar_pressure = 4.57 * math.pow(10, -6) # Given on slide 22
     omega_earth = 72.921151467 * math.pow(10, -6) # rad/sec
-    nautical_mile = 1.852 # km
+    omega_earth_vector = [0, 0, omega_earth]
     sun_mu = ke1.mu * 332946.09358859973
     moon_mu = ke1.mu / 81.3005764441083 
 
@@ -55,26 +55,39 @@ def main():
     print()
 
     # Compute 3rd-body acceleration for sun
-    sun_acceleration = keHelperFunctions.third_body_acceleration(sun_mu, ke1.r_vector, sun_vector)
+    sun_acceleration = keHelperFunctions.compute_third_body_acceleration(sun_mu, ke1.r_vector, sun_vector)
     print(f'Acceleration of the sun: {sun_acceleration}')
 
 
     # Compute 3rd-body acceleration for moon
-    moon_acceleration = keHelperFunctions.third_body_acceleration(moon_mu, ke1.r_vector, moon_vector)
+    moon_acceleration = keHelperFunctions.compute_third_body_acceleration(moon_mu, ke1.r_vector, moon_vector)
     print(f'Acceleration of the moon: {moon_acceleration}')
 
 
     # Compute drag acceleration with for F10=100
     # Remember: model uses F10scaled = F10/100
+    velocity_relative_to_atmosphere = keHelperFunctions.compute_velocity_relative_to_atmosphere(ke1.r_vector, ke1.r_dot_vector, omega_earth)
+    lat, lon, alt = keHelperFunctions.compute_lat_lon_alt(ke1.r_vector)
+    print(f'LAT: {lat}')
+    print(f'LON: {lon}')
+    print(f'ALT: {alt*.001}')
+
+    alt_km = alt*.001 # Convert altitude from meters to km
+
+    atmospheric_density = keHelperFunctions.compute_atmospheric_density(utc_time, alt_km, ke1.r_vector, sun_vector)
+
+    atmospheric_drag = keHelperFunctions.compute_atmospheric_drag(drag_coefficient, drag_area, vehicle_mass, atmospheric_density, ke1.r_vector, ke1.r_dot_vector, omega_earth_vector)
+
+    print(f'Atmospheric Drag Acceleration: {atmospheric_drag}')
 
 
     # Compute Solar Radiation Pressure
-    solar_radiation_acceleration = keHelperFunctions.solar_radiation(solar_pressure_area,
-                                                                     radiation_coefficient, 
-                                                                     vehicle_mass, 
-                                                                     1, # Assumed that there isn't an ecclipse
-                                                                     solar_pressure,
-                                                                     sun_vector)
+    solar_radiation_acceleration = keHelperFunctions.compute_solar_radiation(solar_pressure_area,
+                                                                             radiation_coefficient, 
+                                                                             vehicle_mass, 
+                                                                             1, # Assumed that there isn't an ecclipse
+                                                                             solar_pressure,
+                                                                             sun_vector)
 
     print(f'Solar Radiation Acceleration: {solar_radiation_acceleration}')
 
@@ -82,6 +95,8 @@ def main():
     accelerants = []
     accelerants.append(sun_acceleration)
     accelerants.append(moon_acceleration)
+    accelerants.append(solar_radiation_acceleration)
+    accelerants.append(atmospheric_drag)
 
     total_accelerations = keHelperFunctions.compute_total_acceleration_sv(accelerants)
     print(f'Total Acceleration on SV: {total_accelerations}')

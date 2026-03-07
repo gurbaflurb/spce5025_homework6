@@ -465,8 +465,25 @@ class KeplerianElements():
     def convert_eci_to_wgs84ECEF(self, cur_pos, cur_vel):
         # Position vector is identical to ECI
         # Velocity needs to be adjusted thanks to the rotation of the planet
+
         ecef_position = self.convert_perifocal_to_eci()[2]
         ecef_velocity = self.r_dot_vector - np.cross(self.wgs84_rotation_of_earth_vector, ecef_position)
         
         return (ecef_position, ecef_velocity)
+    
 
+    # def compute_ground_site_location(self):
+    #     '''Returns the ECEF coordinates using WGS84 defined values'''
+    #     # WGS-84 defined values
+    #     earth_radius = 6378137 # Meters
+    #     flattening = 1/298.257223563
+    #     earth_eccentricity = 0.0818191908
+    #     earth_eccentricity_squared = 0.0066943800
+
+    #     x = ((earth_radius/math.sqrt(1 - earth_eccentricity_squared*math.pow(math.sin()))) + h)
+
+    #     y = 
+
+    #     z = 
+
+    #     return [x, y, z]

@@ -1,5 +1,6 @@
 import yaml
 import math
+import datetime
 
 import numpy as np
 
@@ -308,7 +309,7 @@ def determine_moon_vector_lf(jd):
 
      return [x, y, z]
 
-def third_body_acceleration(third_body_mu, sv_eci_position: list, third_body_eci_position: list):
+def compute_third_body_acceleration(third_body_mu, sv_eci_position: list, third_body_eci_position: list):
      '''Determines the acceleration force from a third body on a given SV. Units must be given in an ECI reference frame'''
      # Relative position vector is given by the equation: relative_position = third_body_ECI_position - SV_ECI_position
      # Acceleration of the third body is then calculated with the following:
@@ -321,11 +322,135 @@ def third_body_acceleration(third_body_mu, sv_eci_position: list, third_body_eci
 
      return third_body_mu * (pt1 - pt2)
 
-def drag_acceleration():
-     '''Uses RK4 to estimate the acceleration force from atmospheric drag on the space vehicle'''
-     pass
+def compute_velocity_relative_to_atmosphere(position_vector, velocity_vector, omega_cross):
+     '''Takes in the position and velocity vector for the space vehicle in ECI reference frame, and the omega cross in radians/second'''
+     return velocity_vector - (np.multiply(omega_cross, position_vector))
 
-def solar_radiation(exposed_area_to_sun, radiation_pressure_coefficient, sv_mass, sun_shadow_factor, solar_intensity, vector_from_sv_to_sun):
+def compute_f10_scaled(days):
+     '''Computes the value of F10_scaled, takes in days since the epoch: 00:00:00 31 Dec 1957. If you need F10, multiply the returned value by 100'''
+     return 1.5 + 0.8 * math.cos((2 * math.pi * days)/4020)
+
+def compute_lat_lon_alt(position_vector) -> tuple:
+     '''Computes the latitude, longitude, and altitude given a position vector'''
+     
+     # WGS84 defined values from slide 40
+     earth_radius = 6378137 # Meters, aka a_cross
+     flattening = 1/298.257223563
+     polar_semi_minor_axis = 6356752.314 # Meters, aka b_cross
+     e_cross = 0.0818191908
+     e_squared = math.pow(e_cross, 2)
+
+     cur_lat = math.asin(position_vector[2]/np.linalg.norm(position_vector))
+     tolerance = 0.0000000000001
+     update = 10
+
+     while update > tolerance:
+          tanlat = (position_vector[2]+(earth_radius*e_squared)/math.sqrt(1+math.pow(flattening/earth_radius, 2))*(math.pow(math.tan(cur_lat), 2)))/math.sqrt(math.pow(position_vector[0], 2)+math.pow(position_vector[1], 2))
+          lat = math.atan(tanlat)
+          update = lat - cur_lat
+          cur_lat = lat
+
+     xy = (math.pow(position_vector[0], 2)+math.pow(position_vector[1], 2))/math.pow(earth_radius, 2)
+     z = math.pow(position_vector[2], 2)/math.pow(polar_semi_minor_axis, 2)
+
+     altitude = np.linalg.norm(position_vector) * (1 - 1/math.sqrt(xy + z))
+
+     longitude = math.atan2(position_vector[1], position_vector[0])
+     if longitude < 0:
+          longitude = longitude + 2*math.pi
+
+     return (cur_lat, longitude, altitude)
+
+
+def compute_atmospheric_density(date: datetime.datetime, altitude, position_vector, sun_vector):
+     '''Implements Jacchia 1960 (AKA J60) density model. Returns atmospheric pressure p. Takes in altitude in km, position_vector, and the sun_vector'''
+     
+     # From solution
+     f2m = 0.3048 # Feet to meters
+     nm2f = 6076.115485 # Nautical miles to feet
+     nm2m = 1852 # Nautical miles to meters
+     sf3_kgm3 = 515.37886
+     Re = 6378137 # Earth radius in meters
+     f = 1./298.257223563 # 
+     Ee = math.sqrt(2.*f - f*f)
+     e2 = Ee*Ee
+     bulge_lag_angle = 0.55 # radians. Lag of bulge from sun
+     cos_b = math.cos(bulge_lag_angle)
+     sin_b = math.sin(bulge_lag_angle)
+
+
+
+     naut_alt = altitude / 1.852 # Convert km to nautical miles
+     print(f'Nautical Miles Altitude: {naut_alt}')
+
+     # Find days since epoch: 00:00:00 31 Dec 1957
+     epoch = datetime.datetime(1957, 12, 31, 0, 0, 0)
+     T = date - epoch
+
+     f10_scaled = compute_f10_scaled(T.days)
+     print(f'F10 Scaled: {f10_scaled}')
+     f10 = 100
+
+     f10_actual_scaled = f10/100
+
+     sun_vector_unit = sun_vector/np.linalg.norm(sun_vector)
+
+     print(f'Sun Unit Vector: {sun_vector_unit}')
+
+
+     # Slide 34
+     diurnal_bulge_unit_vector = [ (sun_vector_unit[0]*cos_b - sun_vector_unit[1]*sin_b), (sun_vector_unit[1]*cos_b + sun_vector_unit[0]*sin_b), sun_vector_unit[2] ]
+     
+     cos_psi = np.dot(position_vector, diurnal_bulge_unit_vector)/(np.linalg.norm(position_vector)*np.linalg.norm(diurnal_bulge_unit_vector))
+
+     print(f'COS(Psi): {cos_psi}')
+
+     if naut_alt < 108:
+          raise NotImplementedError('Nautical mile altitude below 180, which is not implemented')
+     elif naut_alt < 378:
+          # Run drag calculation formula between 108 and 378 nautical miles
+          # Slide 36
+          a = 0.00368
+          b = 15.738
+          k = 515.37886
+
+          # p_o = np.exp((6.363 * math.pow(math.e, -0.0048 * naut_alt) - a * naut_alt - b) * math.log(10, math.e))
+
+          p_o = np.exp((6.363*np.exp(-0.0048 * naut_alt) - a*naut_alt - b) * math.log(10, math.e))
+
+          #p = p_o * (0.85 * f10_scaled) * (1 + 0.02375 * (math.pow(math.e, 0.0102*naut_alt))*(1 + math.pow(math.cos(cos_psi), 3))) * k
+
+          p = p_o * (0.85 * f10_actual_scaled) * (1 + 0.02375 * (np.exp(0.0102*naut_alt) - 1.9)*(math.pow(1 + cos_psi, 3))) * k
+
+     elif naut_alt < 1000:
+          # Run drag calculation formula between 378 and 1000 nautical miles
+          p = ((0.00504 * f10_actual_scaled)/math.pow(naut_alt, 8)) * (0.125*math.pow(1 + cos_psi, 3)*(math.pow(naut_alt, 3) - 6*math.pow(10, 6)) + 6*math.pow(10, 6)) * k
+
+     else:
+          # Default case since above 1000 nautical miles, the drag is effectively 0 kg/m^3
+          p = 0
+
+     print(f'Atmospheric density: {p}')
+     
+     return p
+
+def compute_atmospheric_drag(drag_coefficient, drag_area, sv_mass, atmospheric_density, position_vector, velocity_vector, omega_cross_vector):
+
+     v_r_arrow = velocity_vector - np.cross(omega_cross_vector, position_vector)
+     
+     velocity_unit_vector = v_r_arrow/np.linalg.norm(v_r_arrow)
+
+     velocity_norm = np.linalg.norm(v_r_arrow)
+
+     print(f'v_r_arrow : {v_r_arrow}')
+
+     pt1 = -((drag_coefficient * drag_area)/(2*sv_mass))
+
+     pt2 = atmospheric_density * math.pow(velocity_norm, 2) * velocity_unit_vector
+
+     return pt1 * pt2
+
+def compute_solar_radiation(exposed_area_to_sun, radiation_pressure_coefficient, sv_mass, sun_shadow_factor, solar_intensity, vector_from_sv_to_sun):
      '''Implements a "Ball" method to predict the solar radiation pressure on the satellite.'''
      # Slide 24
      cram = (radiation_pressure_coefficient * exposed_area_to_sun) / sv_mass
